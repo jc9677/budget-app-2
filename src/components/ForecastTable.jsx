@@ -25,15 +25,32 @@ import { generateAllOccurrences } from '../utils/recurrence';
 
 // Forecast logic: show each occurrence as a row, with running balance for each account
 function forecastRows(accounts, transactions, fromDate, toDate) {
-  const occurrences = generateAllOccurrences(transactions, fromDate, toDate)
+  // 1. Compute starting balance for each account as of fromDate
+  const allOccurrences = generateAllOccurrences(transactions, new Date('1900-01-01'), toDate)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
-  // Map of accountId to running balance
-  const balances = {};
-  // Build rows: for each occurrence, show date, account, category, type, amount, and resulting balance
-  return occurrences.map(occ => {
+  const startBalances = {};
+  accounts.forEach(acc => {
+    startBalances[acc.id] = acc.balance || 0;
+  });
+  allOccurrences.forEach(occ => {
+    if (new Date(occ.date) < fromDate) {
+      if (occ.type === 'income') {
+        startBalances[occ.accountId] += occ.amount;
+      } else {
+        startBalances[occ.accountId] -= occ.amount;
+      }
+    }
+  });
+  // 2. Now generate occurrences within the range, and use the computed starting balance
+  const rangeOccurrences = allOccurrences.filter(occ => {
+    const d = new Date(occ.date);
+    return d >= fromDate && d <= toDate;
+  });
+  const balances = { ...startBalances };
+  return rangeOccurrences.map(occ => {
     if (!(occ.accountId in balances)) {
-      const acc = accounts.find(a => a.id === occ.accountId);
-      balances[occ.accountId] = acc ? acc.balance : 0;
+      // Should not happen, but fallback to 0
+      balances[occ.accountId] = 0;
     }
     if (occ.type === 'income') {
       balances[occ.accountId] += occ.amount;
