@@ -28,7 +28,6 @@ const drawerWidth = 220;
 const navItems = [
   { text: 'Accounts', icon: <AccountBalanceIcon /> },
   { text: 'Transactions', icon: <ReceiptLongIcon /> },
-  { text: 'Occurrences', icon: <TableChartIcon /> },
   { text: 'Forecast', icon: <TableChartIcon /> },
   { text: 'Settings', icon: <SettingsIcon /> },
 ];
@@ -78,7 +77,6 @@ function App() {
               <ForecastTable />
             </>
           )}
-          {selected === 'Occurrences' && <OccurrencesViewWrapper />}
           {selected === 'Transactions' && <TransactionsView />}
           {selected === 'Accounts' && <AccountsView />}
           {selected === 'Settings' && <SettingsView />}
