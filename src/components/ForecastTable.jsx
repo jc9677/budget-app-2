@@ -114,7 +114,11 @@ export default function ForecastTable() {
                 <TableCell>{row.account}</TableCell>
                 <TableCell>{row.category}</TableCell>
                 <TableCell>{row.type}</TableCell>
-                <TableCell align="right">{row.amount.toLocaleString()}</TableCell>
+                <TableCell align="right">
+                  <span style={{ color: row.type === 'income' ? 'green' : 'red', fontWeight: 500 }}>
+                    {row.type === 'income' ? '+' : '-'}${Math.abs(row.amount).toLocaleString()}
+                  </span>
+                </TableCell>
                 <TableCell align="right">{row.balance.toLocaleString()}</TableCell>
               </TableRow>
             ))}
