@@ -7,6 +7,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
+import ForecastLineChart from './ForecastLineChart';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
@@ -140,6 +141,7 @@ export default function ForecastTable() {
 
   return (
     <>
+      <ForecastLineChart rows={rows} accounts={accounts} />
       <Typography variant="h6" gutterBottom>
         Forecast Table
       </Typography>
