@@ -141,101 +141,175 @@ export default function AccountsView() {
   };
 
   return (
-    <Box>
-      <Typography variant="h6" gutterBottom>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 'bold' }}>
         Accounts
       </Typography>
       
-      <List>
-        {accounts.map((account) => (
-          <ListItem 
-            key={account.id}
-            sx={{ 
-              border: '1px solid #e0e0e0', 
-              borderRadius: 1, 
-              mb: 1,
-              bgcolor: editingId === account.id ? '#f5f5f5' : 'transparent'
+      {/* Add New Account Section */}
+      <Box sx={{ 
+        mb: 4, 
+        p: 3, 
+        border: '2px dashed #e0e0e0', 
+        borderRadius: 2,
+        bgcolor: '#fafafa'
+      }}>
+        <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+          Add New Account
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <TextField
+            label="Account Name"
+            value={newAccountName}
+            onChange={e => setNewAccountName(e.target.value)}
+            size="small"
+            sx={{ minWidth: 200, flex: 1 }}
+            onKeyPress={e => e.key === 'Enter' && handleAddAccount()}
+          />
+          <TextField
+            label="Initial Balance"
+            value={newAccountBalance}
+            onChange={e => setNewAccountBalance(e.target.value)}
+            size="small"
+            type="number"
+            sx={{ minWidth: 150 }}
+            onKeyPress={e => e.key === 'Enter' && handleAddAccount()}
+            InputProps={{
+              startAdornment: <Typography sx={{ mr: 0.5, color: 'text.secondary' }}>$</Typography>
             }}
+          />
+          <Button 
+            variant="contained" 
+            onClick={handleAddAccount}
+            sx={{ height: 40 }}
+            size="large"
           >
-            {editingId === account.id ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                <TextField
-                  label="Account Name"
-                  value={editForm.name}
-                  onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                  size="small"
-                  sx={{ flex: 1 }}
-                />
-                <TextField
-                  label="Balance"
-                  value={editForm.balance}
-                  onChange={e => setEditForm({ ...editForm, balance: e.target.value })}
-                  size="small"
-                  type="number"
-                  sx={{ width: 120 }}
-                />
-                <IconButton 
-                  color="primary" 
-                  onClick={() => handleEditSave(account.id)}
-                  title="Save changes"
-                >
-                  <SaveIcon />
-                </IconButton>
-                <IconButton 
-                  onClick={handleEditCancel}
-                  title="Cancel editing"
-                >
-                  <CancelIcon />
-                </IconButton>
-              </Box>
-            ) : (
-              <>
-                <ListItemText
-                  primary={account.name}
-                  secondary={`Balance: $${account.balance.toLocaleString()}`}
-                />
-                <IconButton 
-                  edge="end" 
-                  onClick={() => handleEditStart(account)}
-                  title="Edit account"
-                  sx={{ mr: 1 }}
-                >
-                  <EditIcon />
-                </IconButton>
-                <IconButton 
-                  edge="end" 
-                  onClick={() => handleDeleteClick(account)}
-                  title="Delete account"
-                  color="error"
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </>
-            )}
-          </ListItem>
-        ))}
-      </List>
-      
-      <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-        <TextField
-          label="Account Name"
-          value={newAccountName}
-          onChange={e => setNewAccountName(e.target.value)}
-          size="small"
-          onKeyPress={e => e.key === 'Enter' && handleAddAccount()}
-        />
-        <TextField
-          label="Initial Balance"
-          value={newAccountBalance}
-          onChange={e => setNewAccountBalance(e.target.value)}
-          size="small"
-          type="number"
-          onKeyPress={e => e.key === 'Enter' && handleAddAccount()}
-        />
-        <Button variant="contained" onClick={handleAddAccount}>
-          Add Account
-        </Button>
+            Add Account
+          </Button>
+        </Box>
       </Box>
+
+      {/* Accounts List */}
+      <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+        Your Accounts ({accounts.length})
+      </Typography>
+      
+      {accounts.length === 0 ? (
+        <Box sx={{ 
+          textAlign: 'center', 
+          py: 6, 
+          color: 'text.secondary',
+          border: '1px solid #e0e0e0',
+          borderRadius: 2,
+          bgcolor: '#fafafa'
+        }}>
+          <Typography variant="h6" gutterBottom>
+            No accounts yet
+          </Typography>
+          <Typography>
+            Add your first account above to get started with tracking your budget.
+          </Typography>
+        </Box>
+      ) : (
+        <List sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
+          {accounts.map((account, index) => (
+            <ListItem 
+              key={account.id}
+              sx={{ 
+                border: '1px solid #e0e0e0', 
+                borderRadius: 2, 
+                mb: 2,
+                bgcolor: editingId === account.id ? '#f0f7ff' : 'white',
+                boxShadow: editingId === account.id ? '0 2px 8px rgba(0,0,0,0.1)' : '0 1px 3px rgba(0,0,0,0.05)',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  transform: editingId === account.id ? 'none' : 'translateY(-1px)'
+                }
+              }}
+            >
+              {editingId === account.id ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%', py: 1 }}>
+                  <TextField
+                    label="Account Name"
+                    value={editForm.name}
+                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                    size="small"
+                    sx={{ flex: 1 }}
+                  />
+                  <TextField
+                    label="Balance"
+                    value={editForm.balance}
+                    onChange={e => setEditForm({ ...editForm, balance: e.target.value })}
+                    size="small"
+                    type="number"
+                    sx={{ width: 150 }}
+                    InputProps={{
+                      startAdornment: <Typography sx={{ mr: 0.5, color: 'text.secondary' }}>$</Typography>
+                    }}
+                  />
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <IconButton 
+                      color="primary" 
+                      onClick={() => handleEditSave(account.id)}
+                      title="Save changes"
+                      sx={{ bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }}
+                    >
+                      <SaveIcon />
+                    </IconButton>
+                    <IconButton 
+                      onClick={handleEditCancel}
+                      title="Cancel editing"
+                      sx={{ bgcolor: 'grey.300', '&:hover': { bgcolor: 'grey.400' } }}
+                    >
+                      <CancelIcon />
+                    </IconButton>
+                  </Box>
+                </Box>
+              ) : (
+                <>
+                  <ListItemText
+                    primary={
+                      <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+                        {account.name}
+                      </Typography>
+                    }
+                    secondary={
+                      <Typography variant="body1" sx={{ color: 'success.main', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                        Balance: ${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Typography>
+                    }
+                  />
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <IconButton 
+                      onClick={() => handleEditStart(account)}
+                      title="Edit account"
+                      sx={{ 
+                        bgcolor: 'primary.50', 
+                        color: 'primary.main',
+                        '&:hover': { bgcolor: 'primary.100' }
+                      }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton 
+                      onClick={() => handleDeleteClick(account)}
+                      title="Delete account"
+                      sx={{ 
+                        bgcolor: 'error.50', 
+                        color: 'error.main',
+                        '&:hover': { bgcolor: 'error.100' }
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                </>
+              )}
+            </ListItem>
+          ))}
+        </List>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog 

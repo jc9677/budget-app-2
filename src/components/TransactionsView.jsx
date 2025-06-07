@@ -102,157 +102,309 @@ export default function TransactionsView() {
   };
 
   return (
-    <Box>
-      <Typography variant="h6" gutterBottom>
-        Transactions (Income & Expenses)
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 'bold' }}>
+        Recurring Transactions
       </Typography>
-      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-        <TextField
-          select
-          label="Category"
-          name="category"
-          value={form.category}
-          onChange={handleChange}
-          size="small"
-        >
-          {categories.map((cat) => (
-            <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          label="Add Category"
-          name="newCategory"
-          value={form.newCategory}
-          onChange={handleChange}
-          size="small"
-        />
-        <Button variant="outlined" onClick={handleAddCategory} disabled={!form.newCategory}>
-          Add Category
-        </Button>
-        <TextField
-          label="Name"
-          name="name"
-          value={form.name}
-          onChange={handleChange}
-          size="small"
-        />
-        <TextField
-          label="Amount"
-          name="amount"
-          value={form.amount}
-          onChange={handleChange}
-          size="small"
-          type="number"
-        />
-        <TextField
-          select
-          label="Type"
-          name="type"
-          value={form.type}
-          onChange={handleChange}
-          size="small"
-        >
-          <MenuItem value="expense">Expense</MenuItem>
-          <MenuItem value="income">Income</MenuItem>
-        </TextField>
-        <TextField
-          select
-          label="Account"
-          name="accountId"
-          value={form.accountId}
-          onChange={handleChange}
-          size="small"
-        >
-          {accounts.map((a) => (
-            <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          label="Frequency"
-          name="frequency"
-          value={form.frequency}
-          onChange={handleChange}
-          size="small"
-        >
-          {frequencies.map((f) => (
-            <MenuItem key={f} value={f}>{f}</MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          label="Start Date"
-          name="startDate"
-          type="date"
-          value={form.startDate}
-          onChange={handleChange}
-          size="small"
-          InputLabelProps={{ shrink: true }}
-        />
-        <TextField
-          label="End Date"
-          name="endDate"
-          type="date"
-          value={form.endDate}
-          onChange={handleChange}
-          size="small"
-          InputLabelProps={{ shrink: true }}
-        />
-        <Button variant="contained" onClick={handleAdd}>
-          Add
-        </Button>
-      </Box>
-      <List>
-        {transactions.map((tx) => (
-          <ListItem key={tx.id} secondaryAction={
-            <>
-              <IconButton edge="end" aria-label="edit" onClick={() => {
-                setEditForm(tx);
-                setEditDialog({ open: true, tx });
-              }}>
-                <EditIcon />
-              </IconButton>
-              <IconButton edge="end" aria-label="delete" onClick={async () => {
-                await deleteTransaction(tx.id);
-                await refreshData();
-              }}>
-                <DeleteIcon />
-              </IconButton>
-            </>
-          }>
-            <ListItemText
-              primary={`${tx.name} (${tx.type})`}
-              secondary={`$${tx.amount} | ${tx.frequency} | ${tx.category || ''} | Account: ${accounts.find(a => a.id === tx.accountId)?.name || ''}`}
+      
+      {/* Add New Transaction Section */}
+      <Box sx={{ 
+        mb: 4, 
+        p: 3, 
+        border: '2px dashed #e0e0e0', 
+        borderRadius: 2,
+        bgcolor: '#fafafa'
+      }}>
+        <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+          Add New Transaction
+        </Typography>
+        
+        {/* Basic Information Row */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mb: 3 }}>
+          <TextField
+            label="Transaction Name"
+            name="name"
+            value={form.name}
+            onChange={handleChange}
+            size="small"
+            fullWidth
+            placeholder="e.g., Monthly Rent, Grocery Shopping"
+          />
+          <TextField
+            label="Amount"
+            name="amount"
+            value={form.amount}
+            onChange={handleChange}
+            size="small"
+            type="number"
+            fullWidth
+            InputProps={{
+              startAdornment: <Typography sx={{ mr: 0.5, color: 'text.secondary' }}>$</Typography>
+            }}
+          />
+          <TextField
+            select
+            label="Type"
+            name="type"
+            value={form.type}
+            onChange={handleChange}
+            size="small"
+            fullWidth
+          >
+            <MenuItem value="expense">💸 Expense</MenuItem>
+            <MenuItem value="income">💰 Income</MenuItem>
+          </TextField>
+        </Box>
+
+        {/* Account and Frequency Row */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mb: 3 }}>
+          <TextField
+            select
+            label="Account"
+            name="accountId"
+            value={form.accountId}
+            onChange={handleChange}
+            size="small"
+            fullWidth
+          >
+            {accounts.map((a) => (
+              <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Frequency"
+            name="frequency"
+            value={form.frequency}
+            onChange={handleChange}
+            size="small"
+            fullWidth
+          >
+            {frequencies.map((f) => (
+              <MenuItem key={f} value={f}>{f}</MenuItem>
+            ))}
+          </TextField>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              label="Start Date"
+              name="startDate"
+              type="date"
+              value={form.startDate}
+              onChange={handleChange}
+              size="small"
+              InputLabelProps={{ shrink: true }}
+              sx={{ flex: 1 }}
             />
-          </ListItem>
-        ))}
-      </List>
+            <TextField
+              label="End Date"
+              name="endDate"
+              type="date"
+              value={form.endDate}
+              onChange={handleChange}
+              size="small"
+              InputLabelProps={{ shrink: true }}
+              sx={{ flex: 1 }}
+            />
+          </Box>
+        </Box>
+
+        {/* Category Row */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center', flexWrap: 'wrap' }}>
+          <TextField
+            select
+            label="Category"
+            name="category"
+            value={form.category}
+            onChange={handleChange}
+            size="small"
+            sx={{ minWidth: 200, flex: 1 }}
+          >
+            {categories.map((cat) => (
+              <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+            ))}
+          </TextField>
+          <Typography sx={{ color: 'text.secondary' }}>or</Typography>
+          <TextField
+            label="Add New Category"
+            name="newCategory"
+            value={form.newCategory}
+            onChange={handleChange}
+            size="small"
+            sx={{ minWidth: 200 }}
+            placeholder="Enter custom category"
+          />
+          <Button 
+            variant="outlined" 
+            onClick={handleAddCategory} 
+            disabled={!form.newCategory}
+            size="small"
+          >
+            Add Category
+          </Button>
+        </Box>
+
+        {/* Add Button */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button 
+            variant="contained" 
+            onClick={handleAdd}
+            size="large"
+            sx={{ px: 4 }}
+            disabled={!form.name || !form.amount || !form.accountId}
+          >
+            Add Transaction
+          </Button>
+        </Box>
+      </Box>
+
+      {/* Transactions List */}
+      <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+        Your Recurring Transactions ({transactions.length})
+      </Typography>
+      
+      {transactions.length === 0 ? (
+        <Box sx={{ 
+          textAlign: 'center', 
+          py: 6, 
+          color: 'text.secondary',
+          border: '1px solid #e0e0e0',
+          borderRadius: 2,
+          bgcolor: '#fafafa'
+        }}>
+          <Typography variant="h6" gutterBottom>
+            No recurring transactions yet
+          </Typography>
+          <Typography>
+            Add your first recurring transaction above to start tracking your budget.
+          </Typography>
+        </Box>
+      ) : (
+        <List sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
+          {transactions.map((tx) => (
+            <ListItem 
+              key={tx.id} 
+              sx={{ 
+                border: '1px solid #e0e0e0', 
+                borderRadius: 2, 
+                mb: 2,
+                bgcolor: 'white',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  transform: 'translateY(-1px)'
+                }
+              }}
+              secondaryAction={
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <IconButton 
+                    onClick={() => {
+                      setEditForm(tx);
+                      setEditDialog({ open: true, tx });
+                    }}
+                    title="Edit transaction"
+                    sx={{ 
+                      bgcolor: 'primary.50', 
+                      color: 'primary.main',
+                      '&:hover': { bgcolor: 'primary.100' }
+                    }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton 
+                    onClick={async () => {
+                      if (window.confirm(`Are you sure you want to delete "${tx.name}"?`)) {
+                        await deleteTransaction(tx.id);
+                        await refreshData();
+                      }
+                    }}
+                    title="Delete transaction"
+                    sx={{ 
+                      bgcolor: 'error.50', 
+                      color: 'error.main',
+                      '&:hover': { bgcolor: 'error.100' }
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              }
+            >
+              <ListItemText
+                primary={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+                      {tx.name}
+                    </Typography>
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        px: 1, 
+                        py: 0.5, 
+                        borderRadius: 1, 
+                        bgcolor: tx.type === 'income' ? 'success.100' : 'error.100',
+                        color: tx.type === 'income' ? 'success.dark' : 'error.dark',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {tx.type === 'income' ? '💰 Income' : '💸 Expense'}
+                    </Typography>
+                  </Box>
+                }
+                secondary={
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="body1" sx={{ 
+                      color: tx.type === 'income' ? 'success.main' : 'error.main', 
+                      fontWeight: 'bold', 
+                      fontSize: '1.1rem' 
+                    }}>
+                      ${tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} • {tx.frequency}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+                      {tx.category && `${tx.category} • `}
+                      Account: {accounts.find(a => a.id === tx.accountId)?.name || 'Unknown'}
+                      {tx.startDate && ` • Starts: ${new Date(tx.startDate).toLocaleDateString()}`}
+                      {tx.endDate && ` • Ends: ${new Date(tx.endDate).toLocaleDateString()}`}
+                    </Typography>
+                  </Box>
+                }
+              />
+            </ListItem>
+          ))}
+        </List>
+      )}
+
+      {/* Edit Transaction Dialog */}
       <Dialog 
         open={editDialog.open} 
         onClose={() => setEditDialog({ open: false, tx: null })}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
         scroll="body"
         PaperProps={{
           sx: { maxHeight: '90vh' }
         }}
       >
-        <DialogTitle>Edit Transaction</DialogTitle>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6">Edit Transaction</Typography>
+        </DialogTitle>
         <DialogContent sx={{ 
           display: 'grid', 
-          gridTemplateColumns: '1fr 1fr', 
-          gap: 2, 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          gap: 3, 
           pt: 3,
           pb: 2,
           minHeight: 'auto',
           overflow: 'visible'
         }}>
           <TextField 
-            label="Name" 
+            label="Transaction Name" 
             name="name" 
             value={editForm.name || ''} 
             onChange={e => setEditForm({ ...editForm, name: e.target.value })} 
             size="small" 
             sx={{ gridColumn: '1 / -1' }}
+            fullWidth
           />
           <TextField 
             label="Amount" 
@@ -261,6 +413,10 @@ export default function TransactionsView() {
             onChange={e => setEditForm({ ...editForm, amount: e.target.value })} 
             size="small" 
             type="number" 
+            fullWidth
+            InputProps={{
+              startAdornment: <Typography sx={{ mr: 0.5, color: 'text.secondary' }}>$</Typography>
+            }}
           />
           <TextField 
             select 
@@ -269,9 +425,10 @@ export default function TransactionsView() {
             value={editForm.type || ''} 
             onChange={e => setEditForm({ ...editForm, type: e.target.value })} 
             size="small"
+            fullWidth
           >
-            <MenuItem value="expense">Expense</MenuItem>
-            <MenuItem value="income">Income</MenuItem>
+            <MenuItem value="expense">💸 Expense</MenuItem>
+            <MenuItem value="income">💰 Income</MenuItem>
           </TextField>
           <TextField 
             select 
@@ -280,6 +437,7 @@ export default function TransactionsView() {
             value={editForm.accountId || ''} 
             onChange={e => setEditForm({ ...editForm, accountId: e.target.value })} 
             size="small"
+            fullWidth
           >
             {accounts.map((a) => (
               <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>
@@ -292,6 +450,7 @@ export default function TransactionsView() {
             value={editForm.frequency || ''} 
             onChange={e => setEditForm({ ...editForm, frequency: e.target.value })} 
             size="small"
+            fullWidth
           >
             {frequencies.map((f) => (
               <MenuItem key={f} value={f}>{f}</MenuItem>
@@ -305,6 +464,7 @@ export default function TransactionsView() {
             onChange={e => setEditForm({ ...editForm, startDate: e.target.value })} 
             size="small" 
             InputLabelProps={{ shrink: true }} 
+            fullWidth
           />
           <TextField 
             label="End Date" 
@@ -314,6 +474,7 @@ export default function TransactionsView() {
             onChange={e => setEditForm({ ...editForm, endDate: e.target.value })} 
             size="small" 
             InputLabelProps={{ shrink: true }} 
+            fullWidth
           />
           <TextField 
             select 
@@ -322,20 +483,29 @@ export default function TransactionsView() {
             value={editForm.category || ''} 
             onChange={e => setEditForm({ ...editForm, category: e.target.value })} 
             size="small"
-            sx={{ gridColumn: '1 / -1' }}
+            fullWidth
           >
             {categories.map((cat) => (
               <MenuItem key={cat} value={cat}>{cat}</MenuItem>
             ))}
           </TextField>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialog({ open: false, tx: null })}>Cancel</Button>
-          <Button variant="contained" onClick={async () => {
-            await updateTransaction({ ...editForm, amount: parseFloat(editForm.amount) });
-            await refreshData();
-            setEditDialog({ open: false, tx: null });
-          }}>Save</Button>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={() => setEditDialog({ open: false, tx: null })} size="large">
+            Cancel
+          </Button>
+          <Button 
+            variant="contained" 
+            onClick={async () => {
+              await updateTransaction({ ...editForm, amount: parseFloat(editForm.amount) });
+              await refreshData();
+              setEditDialog({ open: false, tx: null });
+            }}
+            size="large"
+            sx={{ px: 4 }}
+          >
+            Save Changes
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
