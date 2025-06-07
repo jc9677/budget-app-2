@@ -79,6 +79,34 @@ function forecastRows(accounts, transactions, fromDate, toDate) {
 
 
 
+// Helper to build chart data for grouped (monthly/annual) views
+function getGroupedChartData(rows, accounts) {
+  if (!Array.isArray(rows) || !rows.length) return [];
+  // We want a time series: for each group, the end-of-period balance for each account
+  // We'll accumulate balances as we go, so the chart shows the progression
+  const chartData = [];
+  // Start with initial balances
+  const running = {};
+  accounts.forEach(acc => {
+    running[acc.name] = acc.balance || 0;
+  });
+  rows.forEach(group => {
+    const dataPoint = { date: group.groupLabel };
+    // For each account, update running balance to this group's end-of-period balance if present
+    (group.balances || []).forEach(bal => {
+      if (typeof bal.balance === 'number' && !isNaN(bal.balance)) {
+        running[bal.account] = bal.balance;
+      }
+    });
+    // Copy current running balances for all accounts
+    accounts.forEach(acc => {
+      dataPoint[acc.name] = running[acc.name];
+    });
+    chartData.push(dataPoint);
+  });
+  return chartData;
+}
+
 export default function ForecastTable() {
   const [accounts, setAccounts] = React.useState([]);
   const [transactions, setTransactions] = React.useState([]);
@@ -113,102 +141,108 @@ export default function ForecastTable() {
     });
   }, [fromDate, toDate, view]);
   // Grouping logic for monthly/annual views
-  function groupedForecastRows(accounts, transactions, fromDate, toDate, view) {
-    // Generate all occurrences in range
-    const allOccurrences = generateAllOccurrences(transactions, new Date('1900-01-01'), toDate)
-      .filter(occ => {
-        const d = new Date(occ.date);
-        return d >= fromDate && d <= toDate;
-      })
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    // Group by month or year
-    const groups = {};
-    allOccurrences.forEach(occ => {
+function groupedForecastRows(accounts, transactions, fromDate, toDate, view) {
+  // Generate all occurrences in range
+  const allOccurrences = generateAllOccurrences(transactions, new Date('1900-01-01'), toDate)
+    .filter(occ => {
       const d = new Date(occ.date);
-      let groupKey, groupLabel, groupEndDate;
-      if (view === 'monthly') {
-        groupKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-        groupLabel = d.toLocaleString('default', { month: 'long', year: 'numeric' });
-        // End of month
-        groupEndDate = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-      } else {
-        groupKey = `${d.getFullYear()}`;
-        groupLabel = d.getFullYear();
-        // End of year
-        groupEndDate = new Date(d.getFullYear(), 11, 31);
-      }
-      if (!groups[groupKey]) {
-        groups[groupKey] = { label: groupLabel, occurrences: [], endDate: groupEndDate };
-      }
-      groups[groupKey].occurrences.push(occ);
-    });
+      return d >= fromDate && d <= toDate;
+    })
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Compute running balances for each account up to each group's end date
-    // 1. Compute starting balances as of fromDate
-    const startBalances = {};
-    accounts.forEach(acc => {
-      startBalances[acc.id] = acc.balance || 0;
-    });
-    // 2. For each group, sum all occurrences up to and including the group's end date
-    const result = [];
-    let runningBalances = { ...startBalances };
-    let occIdx = 0;
-    const allSortedOccurrences = generateAllOccurrences(transactions, new Date('1900-01-01'), toDate)
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    Object.values(groups).forEach(group => {
-      // Map: { category|desc|type|accountId: { ...info, total, count } }
-      const summary = {};
-      group.occurrences.forEach(occ => {
-        const key = `${occ.accountId}|${occ.category}|${occ.type}|${occ.baseId||occ.id}`;
-        if (!summary[key]) {
-          summary[key] = {
-            account: accounts.find(a => a.id === occ.accountId)?.name || 'Unknown',
-            category: occ.category,
-            type: occ.type,
-            total: 0,
-            count: 0,
-            label: occ.label || '',
-            baseAmount: occ.amount,
-          };
-        }
-        summary[key].total += occ.amount;
-        summary[key].count += 1;
-      });
-
-      // Calculate end-of-period balances for each account
-      // Advance runningBalances up to and including group.endDate
-      while (
-        occIdx < allSortedOccurrences.length &&
-        new Date(allSortedOccurrences[occIdx].date) <= group.endDate
-      ) {
-        const occ = allSortedOccurrences[occIdx];
-        if (!(occ.accountId in runningBalances)) runningBalances[occ.accountId] = 0;
-        if (occ.type === 'income') {
-          runningBalances[occ.accountId] += occ.amount;
-        } else {
-          runningBalances[occ.accountId] -= occ.amount;
-        }
-        occIdx++;
-      }
-      const balances = Object.entries(runningBalances).map(([accountId, balance]) => {
-        // Ensure type match for accountId (string/number)
-        const acc = accounts.find(a => String(a.id) === String(accountId));
-        return {
-          account: acc ? acc.name : 'Unknown',
-          balance: typeof balance === 'number' && !isNaN(balance) ? balance : 0,
-        };
-      });
-
-      result.push({
-        groupLabel: group.label,
-        summary: Object.values(summary),
-        balances,
-      });
-    });
-    return Array.isArray(result) ? result : [];
+  // Build period boundaries
+  const periods = [];
+  let cursor = new Date(fromDate);
+  let periodEnd;
+  while (cursor <= toDate) {
+    let groupKey, groupLabel;
+    if (view === 'monthly') {
+      groupKey = `${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}`;
+      groupLabel = cursor.toLocaleString('default', { month: 'long', year: 'numeric' });
+      periodEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+      periodEnd.setHours(23,59,59,999);
+      periods.push({ groupKey, groupLabel, endDate: new Date(periodEnd) });
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    } else {
+      groupKey = `${cursor.getFullYear()}`;
+      groupLabel = cursor.getFullYear();
+      periodEnd = new Date(cursor.getFullYear(), 11, 31);
+      periodEnd.setHours(23,59,59,999);
+      periods.push({ groupKey, groupLabel, endDate: new Date(periodEnd) });
+      cursor = new Date(cursor.getFullYear() + 1, 0, 1);
+    }
+    if (periodEnd > toDate) break;
   }
+
+  // Start with initial balances
+  const balances = {};
+  accounts.forEach(acc => {
+    balances[acc.id] = acc.balance || 0;
+  });
+
+  // For each period, sum only the transactions in that period, and update balances
+  let occIdx = 0;
+  const result = [];
+  periods.forEach(period => {
+    // Gather occurrences in this period
+    const periodStart = result.length === 0 ? new Date(fromDate) : periods[result.length-1].endDate;
+    const periodEnd = period.endDate;
+    const groupOccurrences = [];
+    while (
+      occIdx < allOccurrences.length &&
+      new Date(allOccurrences[occIdx].date) <= periodEnd
+    ) {
+      if (new Date(allOccurrences[occIdx].date) > periodStart) {
+        groupOccurrences.push(allOccurrences[occIdx]);
+      }
+      occIdx++;
+    }
+    // Build summary for this period
+    const summary = {};
+    groupOccurrences.forEach(occ => {
+      const key = `${occ.accountId}|${occ.category}|${occ.type}|${occ.baseId||occ.id}`;
+      if (!summary[key]) {
+        summary[key] = {
+          account: accounts.find(a => a.id === occ.accountId)?.name || 'Unknown',
+          category: occ.category,
+          type: occ.type,
+          total: 0,
+          count: 0,
+          label: occ.label || '',
+          baseAmount: occ.amount,
+        };
+      }
+      summary[key].total += occ.amount;
+      summary[key].count += 1;
+    });
+    // Update balances for this period
+    const periodBalances = { ...balances };
+    groupOccurrences.forEach(occ => {
+      if (!(occ.accountId in periodBalances)) periodBalances[occ.accountId] = 0;
+      if (occ.type === 'income') {
+        periodBalances[occ.accountId] += occ.amount;
+      } else {
+        periodBalances[occ.accountId] -= occ.amount;
+      }
+    });
+    // Save balances for chart and table
+    const balancesArr = Object.entries(periodBalances).map(([accountId, balance]) => {
+      const acc = accounts.find(a => String(a.id) === String(accountId));
+      return {
+        account: acc ? acc.name : 'Unknown',
+        balance: typeof balance === 'number' && !isNaN(balance) ? balance : 0,
+      };
+    });
+    // Update running balances for next period
+    Object.assign(balances, periodBalances);
+    result.push({
+      groupLabel: period.groupLabel,
+      summary: Object.values(summary),
+      balances: balancesArr,
+    });
+  });
+  return Array.isArray(result) ? result : [];
+}
 
   const handleEditClick = (occ) => {
     setEditForm({
@@ -247,9 +281,15 @@ export default function ForecastTable() {
     setEditDialog({ open: false, occ: null });
   };
 
+  // Prepare chart data for each view
+  const chartData = React.useMemo(() => {
+    if (view === 'detailed') return rows;
+    return getGroupedChartData(rows, accounts);
+  }, [rows, accounts, view]);
+
   return (
     <>
-      <ForecastLineChart rows={view === 'detailed' ? rows : []} accounts={accounts} />
+      <ForecastLineChart rows={chartData} accounts={accounts} />
       <Typography variant="h6" gutterBottom>
         Forecast Table
       </Typography>
