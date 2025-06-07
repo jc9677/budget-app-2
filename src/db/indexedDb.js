@@ -71,3 +71,17 @@ export async function setSetting(key, value) {
   const db = await getDb();
   return db.put('settings', { key, value });
 }
+
+// Data management
+export async function deleteAllData() {
+  const db = await getDb();
+  const tx = db.transaction(['accounts', 'transactions', 'settings'], 'readwrite');
+  
+  await Promise.all([
+    tx.objectStore('accounts').clear(),
+    tx.objectStore('transactions').clear(),
+    tx.objectStore('settings').clear(),
+  ]);
+  
+  await tx.done;
+}

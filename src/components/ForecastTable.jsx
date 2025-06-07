@@ -51,6 +51,7 @@ function forecastRows(accounts, transactions, fromDate, toDate) {
   return rangeOccurrences.map(occ => {
     if (!(occ.accountId in balances)) {
       // Should not happen, but fallback to 0
+      console.warn(`Account ID ${occ.accountId} not found in balances, using 0`);
       balances[occ.accountId] = 0;
     }
     if (occ.type === 'income') {
@@ -58,14 +59,17 @@ function forecastRows(accounts, transactions, fromDate, toDate) {
     } else {
       balances[occ.accountId] -= occ.amount;
     }
+    
+    const account = accounts.find(a => a.id === occ.accountId);
+    
     return {
       ...occ,
       date: occ.date,
-      account: accounts.find(a => a.id === occ.accountId)?.name || occ.accountId,
+      account: account?.name || `Unknown Account (${occ.accountId})`,
       category: occ.category,
       type: occ.type,
       amount: occ.amount,
-      balance: balances[occ.accountId],
+      balance: isNaN(balances[occ.accountId]) ? 0 : balances[occ.accountId],
     };
   });
 }
