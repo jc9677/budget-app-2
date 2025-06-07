@@ -119,26 +119,44 @@ export default function ForecastTable() {
       .filter(occ => {
         const d = new Date(occ.date);
         return d >= fromDate && d <= toDate;
-      });
+      })
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
     // Group by month or year
     const groups = {};
     allOccurrences.forEach(occ => {
       const d = new Date(occ.date);
-      let groupKey, groupLabel;
+      let groupKey, groupLabel, groupEndDate;
       if (view === 'monthly') {
         groupKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
         groupLabel = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+        // End of month
+        groupEndDate = new Date(d.getFullYear(), d.getMonth() + 1, 0);
       } else {
         groupKey = `${d.getFullYear()}`;
         groupLabel = d.getFullYear();
+        // End of year
+        groupEndDate = new Date(d.getFullYear(), 11, 31);
       }
       if (!groups[groupKey]) {
-        groups[groupKey] = { label: groupLabel, occurrences: [] };
+        groups[groupKey] = { label: groupLabel, occurrences: [], endDate: groupEndDate };
       }
       groups[groupKey].occurrences.push(occ);
     });
-    // For each group, sum by transaction/category
+
+    // Compute running balances for each account up to each group's end date
+    // 1. Compute starting balances as of fromDate
+    const startBalances = {};
+    accounts.forEach(acc => {
+      startBalances[acc.id] = acc.balance || 0;
+    });
+    // 2. For each group, sum all occurrences up to and including the group's end date
     const result = [];
+    let runningBalances = { ...startBalances };
+    let occIdx = 0;
+    const allSortedOccurrences = generateAllOccurrences(transactions, new Date('1900-01-01'), toDate)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
     Object.values(groups).forEach(group => {
       // Map: { category|desc|type|accountId: { ...info, total, count } }
       const summary = {};
@@ -158,9 +176,35 @@ export default function ForecastTable() {
         summary[key].total += occ.amount;
         summary[key].count += 1;
       });
+
+      // Calculate end-of-period balances for each account
+      // Advance runningBalances up to and including group.endDate
+      while (
+        occIdx < allSortedOccurrences.length &&
+        new Date(allSortedOccurrences[occIdx].date) <= group.endDate
+      ) {
+        const occ = allSortedOccurrences[occIdx];
+        if (!(occ.accountId in runningBalances)) runningBalances[occ.accountId] = 0;
+        if (occ.type === 'income') {
+          runningBalances[occ.accountId] += occ.amount;
+        } else {
+          runningBalances[occ.accountId] -= occ.amount;
+        }
+        occIdx++;
+      }
+      const balances = Object.entries(runningBalances).map(([accountId, balance]) => {
+        // Ensure type match for accountId (string/number)
+        const acc = accounts.find(a => String(a.id) === String(accountId));
+        return {
+          account: acc ? acc.name : 'Unknown',
+          balance: typeof balance === 'number' && !isNaN(balance) ? balance : 0,
+        };
+      });
+
       result.push({
         groupLabel: group.label,
         summary: Object.values(summary),
+        balances,
       });
     });
     return Array.isArray(result) ? result : [];
@@ -310,6 +354,21 @@ export default function ForecastTable() {
                       <TableCell align="right">{item.count}</TableCell>
                     </TableRow>
                   ))}
+                  {/* End-of-period balances row */}
+                  {Array.isArray(group.balances) && group.balances.length > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} style={{ fontWeight: 600, color: '#1976d2' }}>
+                        End-of-{view === 'monthly' ? 'month' : 'year'} balance
+                      </TableCell>
+                      <TableCell colSpan={2} align="right">
+                        {group.balances.map((bal, k) => (
+                          <span key={k} style={{ marginRight: 16 }}>
+                            {bal.account}: <b>${bal.balance.toLocaleString()}</b>
+                          </span>
+                        ))}
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
