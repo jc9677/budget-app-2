@@ -7,6 +7,8 @@ import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 
 import { getAllAccounts } from '../db/indexedDb';
 import { getAllTransactions, addTransaction, updateTransaction, deleteTransaction } from '../db/indexedDb';
@@ -37,16 +39,24 @@ export default function TransactionsView() {
   const [transactions, setTransactions] = React.useState([]);
   const [accounts, setAccounts] = React.useState([]);
   const [categories, setCategories] = React.useState(defaultCategories);
+  
+  // Get current date in YYYY-MM-DD format
+  const getCurrentDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+  
   const [form, setForm] = React.useState({
     name: '',
     amount: '',
     frequency: 'Monthly',
     type: 'expense',
     accountId: '',
-    startDate: '',
+    startDate: getCurrentDate(),
     endDate: '',
     category: defaultCategories[0],
     newCategory: '',
+    indefinitely: true,
   });
   const [editDialog, setEditDialog] = React.useState({ open: false, tx: null });
   const [editForm, setEditForm] = React.useState({});
@@ -81,8 +91,14 @@ export default function TransactionsView() {
   const handleAdd = async () => {
     if (!form.name || !form.amount || !form.accountId) return;
     try {
-      // Remove id if present to avoid IndexedDB constraint errors
-      const { id, newCategory, ...txData } = form;
+      // Remove id and UI-only fields to avoid IndexedDB constraint errors
+      const { id, newCategory, indefinitely, ...txData } = form;
+      
+      // If indefinitely is true, don't include endDate
+      if (indefinitely) {
+        delete txData.endDate;
+      }
+      
       await addTransaction({ ...txData, amount: parseFloat(form.amount) });
       await refreshData();
       setForm({
@@ -91,10 +107,11 @@ export default function TransactionsView() {
         frequency: 'Monthly',
         type: 'expense',
         accountId: '',
-        startDate: '',
+        startDate: getCurrentDate(),
         endDate: '',
         category: categories[0],
         newCategory: '',
+        indefinitely: true,
       });
     } catch (e) {
       alert('Error adding transaction: ' + (e?.message || e));
@@ -184,7 +201,7 @@ export default function TransactionsView() {
               <MenuItem key={f} value={f}>{f}</MenuItem>
             ))}
           </TextField>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <TextField
               label="Start Date"
               name="startDate"
@@ -193,18 +210,31 @@ export default function TransactionsView() {
               onChange={handleChange}
               size="small"
               InputLabelProps={{ shrink: true }}
-              sx={{ flex: 1 }}
+              fullWidth
             />
-            <TextField
-              label="End Date"
-              name="endDate"
-              type="date"
-              value={form.endDate}
-              onChange={handleChange}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-              sx={{ flex: 1 }}
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={form.indefinitely}
+                  onChange={(e) => setForm({ ...form, indefinitely: e.target.checked, endDate: e.target.checked ? '' : form.endDate })}
+                  size="small"
+                />
+              }
+              label="Continues indefinitely"
+              sx={{ mt: 0.5 }}
             />
+            {!form.indefinitely && (
+              <TextField
+                label="End Date"
+                name="endDate"
+                type="date"
+                value={form.endDate}
+                onChange={handleChange}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+              />
+            )}
           </Box>
         </Box>
 
@@ -299,7 +329,7 @@ export default function TransactionsView() {
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <IconButton 
                     onClick={() => {
-                      setEditForm(tx);
+                      setEditForm({ ...tx, indefinitely: !tx.endDate });
                       setEditDialog({ open: true, tx });
                     }}
                     title="Edit transaction"
@@ -456,26 +486,45 @@ export default function TransactionsView() {
               <MenuItem key={f} value={f}>{f}</MenuItem>
             ))}
           </TextField>
-          <TextField 
-            label="Start Date" 
-            name="startDate" 
-            type="date" 
-            value={editForm.startDate || ''} 
-            onChange={e => setEditForm({ ...editForm, startDate: e.target.value })} 
-            size="small" 
-            InputLabelProps={{ shrink: true }} 
-            fullWidth
-          />
-          <TextField 
-            label="End Date" 
-            name="endDate" 
-            type="date" 
-            value={editForm.endDate || ''} 
-            onChange={e => setEditForm({ ...editForm, endDate: e.target.value })} 
-            size="small" 
-            InputLabelProps={{ shrink: true }} 
-            fullWidth
-          />
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <TextField 
+              label="Start Date" 
+              name="startDate" 
+              type="date" 
+              value={editForm.startDate || ''} 
+              onChange={e => setEditForm({ ...editForm, startDate: e.target.value })} 
+              size="small" 
+              InputLabelProps={{ shrink: true }} 
+              fullWidth
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={editForm.indefinitely || false}
+                  onChange={(e) => setEditForm({ 
+                    ...editForm, 
+                    indefinitely: e.target.checked, 
+                    endDate: e.target.checked ? '' : editForm.endDate 
+                  })}
+                  size="small"
+                />
+              }
+              label="Continues indefinitely"
+              sx={{ mt: 0.5 }}
+            />
+            {!editForm.indefinitely && (
+              <TextField 
+                label="End Date" 
+                name="endDate" 
+                type="date" 
+                value={editForm.endDate || ''} 
+                onChange={e => setEditForm({ ...editForm, endDate: e.target.value })} 
+                size="small" 
+                InputLabelProps={{ shrink: true }} 
+                fullWidth
+              />
+            )}
+          </Box>
           <TextField 
             select 
             label="Category" 
@@ -497,7 +546,15 @@ export default function TransactionsView() {
           <Button 
             variant="contained" 
             onClick={async () => {
-              await updateTransaction({ ...editForm, amount: parseFloat(editForm.amount) });
+              // Remove UI-only fields and handle indefinitely checkbox
+              const { indefinitely, ...txData } = editForm;
+              
+              // If indefinitely is true, don't include endDate
+              if (indefinitely) {
+                delete txData.endDate;
+              }
+              
+              await updateTransaction({ ...txData, amount: parseFloat(editForm.amount) });
               await refreshData();
               setEditDialog({ open: false, tx: null });
             }}
