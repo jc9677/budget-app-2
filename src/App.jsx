@@ -27,7 +27,7 @@ const drawerWidth = 220;
 
 const navItems = [
   { text: 'Accounts', icon: <AccountBalanceIcon /> },
-  { text: 'Transactions', icon: <ReceiptLongIcon /> },
+  { text: 'Recurring Transactions', icon: <ReceiptLongIcon /> },
   { text: 'Forecast', icon: <TableChartIcon /> },
   { text: 'Settings', icon: <SettingsIcon /> },
 ];
@@ -44,6 +44,11 @@ function App() {
           width: drawerWidth,
           flexShrink: 0,
           [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
+        }}
+        PaperProps={{
+          'aria-hidden': false,
+          role: 'navigation',
+          'aria-label': 'Main navigation'
         }}
       >
         <Toolbar>
@@ -77,7 +82,7 @@ function App() {
               <ForecastTable />
             </>
           )}
-          {selected === 'Transactions' && <TransactionsView />}
+          {selected === 'Recurring Transactions' && <TransactionsView />}
           {selected === 'Accounts' && <AccountsView />}
           {selected === 'Settings' && <SettingsView />}
         </React.Suspense>

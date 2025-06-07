@@ -51,9 +51,19 @@ export default function TransactionsView() {
   const [editDialog, setEditDialog] = React.useState({ open: false, tx: null });
   const [editForm, setEditForm] = React.useState({});
 
+  const refreshData = async () => {
+    const [txs, accs] = await Promise.all([getAllTransactions(), getAllAccounts()]);
+    setTransactions(txs);
+    setAccounts(accs);
+    
+    // Extract unique categories from existing transactions and merge with defaults
+    const existingCategories = [...new Set(txs.map(tx => tx.category).filter(Boolean))];
+    const allCategories = [...new Set([...defaultCategories, ...existingCategories])];
+    setCategories(allCategories);
+  };
+
   React.useEffect(() => {
-    getAllTransactions().then(setTransactions);
-    getAllAccounts().then(setAccounts);
+    refreshData();
   }, []);
 
 
@@ -74,7 +84,7 @@ export default function TransactionsView() {
       // Remove id if present to avoid IndexedDB constraint errors
       const { id, newCategory, ...txData } = form;
       await addTransaction({ ...txData, amount: parseFloat(form.amount) });
-      setTransactions(await getAllTransactions());
+      await refreshData();
       setForm({
         name: '',
         amount: '',
@@ -203,7 +213,7 @@ export default function TransactionsView() {
               </IconButton>
               <IconButton edge="end" aria-label="delete" onClick={async () => {
                 await deleteTransaction(tx.id);
-                setTransactions(await getAllTransactions());
+                await refreshData();
               }}>
                 <DeleteIcon />
               </IconButton>
@@ -216,28 +226,104 @@ export default function TransactionsView() {
           </ListItem>
         ))}
       </List>
-      <Dialog open={editDialog.open} onClose={() => setEditDialog({ open: false, tx: null })}>
+      <Dialog 
+        open={editDialog.open} 
+        onClose={() => setEditDialog({ open: false, tx: null })}
+        maxWidth="sm"
+        fullWidth
+        scroll="body"
+        PaperProps={{
+          sx: { maxHeight: '90vh' }
+        }}
+      >
         <DialogTitle>Edit Transaction</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <TextField label="Name" name="name" value={editForm.name || ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} size="small" />
-          <TextField label="Amount" name="amount" value={editForm.amount || ''} onChange={e => setEditForm({ ...editForm, amount: e.target.value })} size="small" type="number" />
-          <TextField select label="Type" name="type" value={editForm.type || ''} onChange={e => setEditForm({ ...editForm, type: e.target.value })} size="small">
+        <DialogContent sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: '1fr 1fr', 
+          gap: 2, 
+          pt: 3,
+          pb: 2,
+          minHeight: 'auto',
+          overflow: 'visible'
+        }}>
+          <TextField 
+            label="Name" 
+            name="name" 
+            value={editForm.name || ''} 
+            onChange={e => setEditForm({ ...editForm, name: e.target.value })} 
+            size="small" 
+            sx={{ gridColumn: '1 / -1' }}
+          />
+          <TextField 
+            label="Amount" 
+            name="amount" 
+            value={editForm.amount || ''} 
+            onChange={e => setEditForm({ ...editForm, amount: e.target.value })} 
+            size="small" 
+            type="number" 
+          />
+          <TextField 
+            select 
+            label="Type" 
+            name="type" 
+            value={editForm.type || ''} 
+            onChange={e => setEditForm({ ...editForm, type: e.target.value })} 
+            size="small"
+          >
             <MenuItem value="expense">Expense</MenuItem>
             <MenuItem value="income">Income</MenuItem>
           </TextField>
-          <TextField select label="Account" name="accountId" value={editForm.accountId || ''} onChange={e => setEditForm({ ...editForm, accountId: e.target.value })} size="small">
+          <TextField 
+            select 
+            label="Account" 
+            name="accountId" 
+            value={editForm.accountId || ''} 
+            onChange={e => setEditForm({ ...editForm, accountId: e.target.value })} 
+            size="small"
+          >
             {accounts.map((a) => (
               <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>
             ))}
           </TextField>
-          <TextField select label="Frequency" name="frequency" value={editForm.frequency || ''} onChange={e => setEditForm({ ...editForm, frequency: e.target.value })} size="small">
+          <TextField 
+            select 
+            label="Frequency" 
+            name="frequency" 
+            value={editForm.frequency || ''} 
+            onChange={e => setEditForm({ ...editForm, frequency: e.target.value })} 
+            size="small"
+          >
             {frequencies.map((f) => (
               <MenuItem key={f} value={f}>{f}</MenuItem>
             ))}
           </TextField>
-          <TextField label="Start Date" name="startDate" type="date" value={editForm.startDate || ''} onChange={e => setEditForm({ ...editForm, startDate: e.target.value })} size="small" InputLabelProps={{ shrink: true }} />
-          <TextField label="End Date" name="endDate" type="date" value={editForm.endDate || ''} onChange={e => setEditForm({ ...editForm, endDate: e.target.value })} size="small" InputLabelProps={{ shrink: true }} />
-          <TextField select label="Category" name="category" value={editForm.category || ''} onChange={e => setEditForm({ ...editForm, category: e.target.value })} size="small">
+          <TextField 
+            label="Start Date" 
+            name="startDate" 
+            type="date" 
+            value={editForm.startDate || ''} 
+            onChange={e => setEditForm({ ...editForm, startDate: e.target.value })} 
+            size="small" 
+            InputLabelProps={{ shrink: true }} 
+          />
+          <TextField 
+            label="End Date" 
+            name="endDate" 
+            type="date" 
+            value={editForm.endDate || ''} 
+            onChange={e => setEditForm({ ...editForm, endDate: e.target.value })} 
+            size="small" 
+            InputLabelProps={{ shrink: true }} 
+          />
+          <TextField 
+            select 
+            label="Category" 
+            name="category" 
+            value={editForm.category || ''} 
+            onChange={e => setEditForm({ ...editForm, category: e.target.value })} 
+            size="small"
+            sx={{ gridColumn: '1 / -1' }}
+          >
             {categories.map((cat) => (
               <MenuItem key={cat} value={cat}>{cat}</MenuItem>
             ))}
@@ -247,7 +333,7 @@ export default function TransactionsView() {
           <Button onClick={() => setEditDialog({ open: false, tx: null })}>Cancel</Button>
           <Button variant="contained" onClick={async () => {
             await updateTransaction({ ...editForm, amount: parseFloat(editForm.amount) });
-            setTransactions(await getAllTransactions());
+            await refreshData();
             setEditDialog({ open: false, tx: null });
           }}>Save</Button>
         </DialogActions>

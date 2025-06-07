@@ -199,19 +199,70 @@ export default function ForecastTable() {
           </TableBody>
         </Table>
       </TableContainer>
-      <Dialog open={editDialog.open} onClose={() => setEditDialog({ open: false, occ: null })}>
+      <Dialog 
+        open={editDialog.open} 
+        onClose={() => setEditDialog({ open: false, occ: null })} 
+        maxWidth="sm" 
+        fullWidth
+        scroll="body"
+        PaperProps={{
+          sx: { maxHeight: '90vh' }
+        }}
+      >
         <DialogTitle>Edit Occurrence</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 300 }}>
-          <TextField label="Amount" name="amount" value={editForm.amount} onChange={handleEditChange} size="small" type="number" />
-          <TextField label="Date" name="date" value={editForm.date} onChange={handleEditChange} size="small" type="date" InputLabelProps={{ shrink: true }} />
-          <TextField select label="Type" name="type" value={editForm.type} onChange={handleEditChange} size="small">
+        <DialogContent sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: '1fr 1fr', 
+          gap: 2, 
+          pt: 3,
+          pb: 2,
+          minHeight: 'auto',
+          overflow: 'visible'
+        }}>
+          <TextField 
+            label="Amount" 
+            name="amount" 
+            value={editForm.amount} 
+            onChange={handleEditChange} 
+            size="small" 
+            type="number" 
+          />
+          <TextField 
+            label="Date" 
+            name="date" 
+            value={editForm.date} 
+            onChange={handleEditChange} 
+            size="small" 
+            type="date" 
+            InputLabelProps={{ shrink: true }} 
+          />
+          <TextField 
+            select 
+            label="Type" 
+            name="type" 
+            value={editForm.type} 
+            onChange={handleEditChange} 
+            size="small"
+          >
             <MenuItem value="expense">Expense</MenuItem>
             <MenuItem value="income">Income</MenuItem>
           </TextField>
-          <TextField label="Category" name="category" value={editForm.category} onChange={handleEditChange} size="small" />
-          <Box sx={{ mt: 1 }}>
-            <Typography variant="caption">Apply changes to:</Typography>
-            <TextField select size="small" value={editScope} onChange={e => setEditScope(e.target.value)} sx={{ ml: 1 }}>
+          <TextField 
+            label="Category" 
+            name="category" 
+            value={editForm.category} 
+            onChange={handleEditChange} 
+            size="small" 
+          />
+          <Box sx={{ gridColumn: '1 / -1', mt: 1 }}>
+            <Typography variant="caption" display="block" gutterBottom>Apply changes to:</Typography>
+            <TextField 
+              select 
+              fullWidth 
+              size="small" 
+              value={editScope} 
+              onChange={e => setEditScope(e.target.value)}
+            >
               <MenuItem value="single">This occurrence only</MenuItem>
               <MenuItem value="future">All future occurrences</MenuItem>
             </TextField>
