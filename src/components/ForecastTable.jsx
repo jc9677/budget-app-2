@@ -1,5 +1,7 @@
 import * as React from 'react';
 import Table from '@mui/material/Table';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
@@ -81,6 +83,7 @@ export default function ForecastTable() {
   const [accounts, setAccounts] = React.useState([]);
   const [transactions, setTransactions] = React.useState([]);
   const [rows, setRows] = React.useState([]);
+  const [view, setView] = React.useState('detailed'); // 'detailed', 'monthly', 'annual'
   const [fromDate, setFromDate] = React.useState(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -102,9 +105,66 @@ export default function ForecastTable() {
       setTransactions(txs);
       const from = new Date(fromDate);
       const to = new Date(toDate);
-      setRows(forecastRows(acc, txs, from, to));
+      if (view === 'detailed') {
+        setRows(forecastRows(acc, txs, from, to));
+      } else {
+        setRows(groupedForecastRows(acc, txs, from, to, view));
+      }
     });
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, view]);
+  // Grouping logic for monthly/annual views
+  function groupedForecastRows(accounts, transactions, fromDate, toDate, view) {
+    // Generate all occurrences in range
+    const allOccurrences = generateAllOccurrences(transactions, new Date('1900-01-01'), toDate)
+      .filter(occ => {
+        const d = new Date(occ.date);
+        return d >= fromDate && d <= toDate;
+      });
+    // Group by month or year
+    const groups = {};
+    allOccurrences.forEach(occ => {
+      const d = new Date(occ.date);
+      let groupKey, groupLabel;
+      if (view === 'monthly') {
+        groupKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        groupLabel = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      } else {
+        groupKey = `${d.getFullYear()}`;
+        groupLabel = d.getFullYear();
+      }
+      if (!groups[groupKey]) {
+        groups[groupKey] = { label: groupLabel, occurrences: [] };
+      }
+      groups[groupKey].occurrences.push(occ);
+    });
+    // For each group, sum by transaction/category
+    const result = [];
+    Object.values(groups).forEach(group => {
+      // Map: { category|desc|type|accountId: { ...info, total, count } }
+      const summary = {};
+      group.occurrences.forEach(occ => {
+        const key = `${occ.accountId}|${occ.category}|${occ.type}|${occ.baseId||occ.id}`;
+        if (!summary[key]) {
+          summary[key] = {
+            account: accounts.find(a => a.id === occ.accountId)?.name || 'Unknown',
+            category: occ.category,
+            type: occ.type,
+            total: 0,
+            count: 0,
+            label: occ.label || '',
+            baseAmount: occ.amount,
+          };
+        }
+        summary[key].total += occ.amount;
+        summary[key].count += 1;
+      });
+      result.push({
+        groupLabel: group.label,
+        summary: Object.values(summary),
+      });
+    });
+    return Array.isArray(result) ? result : [];
+  }
 
   const handleEditClick = (occ) => {
     setEditForm({
@@ -145,11 +205,21 @@ export default function ForecastTable() {
 
   return (
     <>
-      <ForecastLineChart rows={rows} accounts={accounts} />
+      <ForecastLineChart rows={view === 'detailed' ? rows : []} accounts={accounts} />
       <Typography variant="h6" gutterBottom>
         Forecast Table
       </Typography>
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+        <ToggleButtonGroup
+          value={view}
+          exclusive
+          onChange={(e, val) => val && setView(val)}
+          size="small"
+        >
+          <ToggleButton value="detailed">Detailed</ToggleButton>
+          <ToggleButton value="monthly">Monthly</ToggleButton>
+          <ToggleButton value="annual">Annual</ToggleButton>
+        </ToggleButtonGroup>
         <TextField
           label="From"
           type="date"
@@ -167,42 +237,85 @@ export default function ForecastTable() {
           size="small"
         />
       </Box>
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Account</TableCell>
-              <TableCell>Category</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell align="right">Amount ($)</TableCell>
-              <TableCell align="right">Balance ($)</TableCell>
-              <TableCell align="center">Edit</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row, idx) => (
-              <TableRow key={idx}>
-                <TableCell>{row.date}</TableCell>
-                <TableCell>{row.account}</TableCell>
-                <TableCell>{row.category}</TableCell>
-                <TableCell>{row.type}</TableCell>
-                <TableCell align="right">
-                  <span style={{ color: row.type === 'income' ? 'green' : 'red', fontWeight: 500 }}>
-                    {row.type === 'income' ? '+' : '-'}${Math.abs(row.amount).toLocaleString()}
-                  </span>
-                </TableCell>
-                <TableCell align="right">{row.balance.toLocaleString()}</TableCell>
-                <TableCell align="center">
-                  <IconButton size="small" onClick={() => handleEditClick(row)}>
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                </TableCell>
+      {view === 'detailed' ? (
+        <TableContainer component={Paper}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Date</TableCell>
+                <TableCell>Account</TableCell>
+                <TableCell>Category</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell align="right">Amount ($)</TableCell>
+                <TableCell align="right">Balance ($)</TableCell>
+                <TableCell align="center">Edit</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {(Array.isArray(rows) ? rows : []).map((row, idx) => (
+                <TableRow key={idx}>
+                  <TableCell>{row.date}</TableCell>
+                  <TableCell>{row.account}</TableCell>
+                  <TableCell>{row.category}</TableCell>
+                  <TableCell>{row.type}</TableCell>
+                  <TableCell align="right">
+                    <span style={{ color: row.type === 'income' ? 'green' : 'red', fontWeight: 500 }}>
+                      {row.type === 'income' ? '+' : '-'}${Math.abs(row.amount).toLocaleString()}
+                    </span>
+                  </TableCell>
+                  <TableCell align="right">{(typeof row.balance === 'number' && !isNaN(row.balance) ? row.balance : 0).toLocaleString()}</TableCell>
+                  <TableCell align="center">
+                    <IconButton size="small" onClick={() => handleEditClick(row)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        (Array.isArray(rows) ? rows : []).map((group, idx) => (
+          <Box key={idx} sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1, fontWeight: 600 }}>
+              {group.groupLabel}
+            </Typography>
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Account</TableCell>
+                    <TableCell>Category</TableCell>
+                    <TableCell>Type</TableCell>
+                    <TableCell align="right">Total ($)</TableCell>
+                    <TableCell align="right">Occurrences</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(Array.isArray(group.summary) ? group.summary : []).map((item, j) => (
+                    <TableRow key={j}>
+                      <TableCell>{item.account}</TableCell>
+                      <TableCell>{item.category}</TableCell>
+                      <TableCell>{item.type}</TableCell>
+                      <TableCell align="right">
+                        <span style={{ color: item.type === 'income' ? 'green' : 'red', fontWeight: 500 }}>
+                          {item.type === 'income' ? '+' : '-'}${Math.abs(item.total).toLocaleString()}
+                        </span>
+                        {item.count > 1 && (
+                          <span style={{ color: '#888', fontSize: 12, marginLeft: 6 }}>
+                            ({item.count} x ${Math.abs(item.baseAmount)})
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell align="right">{item.count}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        ))
+      )}
       <Dialog 
         open={editDialog.open} 
         onClose={() => setEditDialog({ open: false, occ: null })} 
