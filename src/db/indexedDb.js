@@ -85,3 +85,27 @@ export async function deleteAllData() {
   
   await tx.done;
 }
+
+// Check if account has associated transactions
+export async function getTransactionsByAccountId(accountId) {
+  const db = await getDb();
+  const allTransactions = await db.getAll('transactions');
+  return allTransactions.filter(tx => tx.accountId === accountId);
+}
+
+// Delete all transactions for a specific account
+export async function deleteTransactionsByAccountId(accountId) {
+  const db = await getDb();
+  const allTransactions = await db.getAll('transactions');
+  const transactionsToDelete = allTransactions.filter(tx => tx.accountId === accountId);
+  
+  const tx = db.transaction(['transactions'], 'readwrite');
+  const store = tx.objectStore('transactions');
+  
+  for (const transaction of transactionsToDelete) {
+    await store.delete(transaction.id);
+  }
+  
+  await tx.done;
+  return transactionsToDelete.length;
+}
